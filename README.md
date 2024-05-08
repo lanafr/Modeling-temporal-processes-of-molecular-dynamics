@@ -10,6 +10,7 @@ Before you begin, ensure you have met the following requirements:
 - cuda
 - pytorch
 - jax
+
 versions that match. The rest is in the requirements.txt file. They were all installed via pip. openmmtools cannot be installed with pip, so it was compiled from source.
 
 The backbone for this code is GAMD (https://arxiv.org/abs/2112.03383, Li, Zijie and Meidani, Kazem and Yadav, Prakarsh and Barati Farimani, Amir, 2022.), and there is also a script for simulating an MD system with GAMD force-predictions.
