@@ -1,20 +1,24 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 import sys, os
+sys.path.append(os.path.join('../',os.path.dirname(os.path.abspath(''))))
+current_dir = os.getcwd()
+parent_dir = os.path.abspath(os.path.join(current_dir, '..'))
+sys.path.append(parent_dir)
+sys.path.append('/home/guests/lana_frkin/GAMDplus/code')
+sys.path.append('/home/guests/lana_frkin/GAMDplus/code/LJ')
+print(sys.path)
 
 import numpy as np
 from types import SimpleNamespace
 import argparse
 
+from einops import rearrange
 from scipy.spatial import cKDTree
 from sklearn.metrics import mean_squared_error
-
-sys.path.append(os.path.join('../',os.path.dirname(os.path.abspath(''))))
-current_dir = os.getcwd()
-parent_dir = os.path.abspath(os.path.join(current_dir, '..'))
-sys.path.append(parent_dir)
-print(sys.path)
 
 num_particles = 258
 BOX_SIZE = 27.27
@@ -53,7 +57,7 @@ def rdf_func(coords, box_size, dr=0.1, r_max=None):
     return g_r, radii[:-1]  # Exclude the last bin edge for plotting
 
 ## for one time snapshot
-def rdf_graph_one_snapshot(trajectory_real_np, trajectory_model, trajectory_GAMD, directory, epoch, femto):
+def rdf_graph_one_snapshot(trajectory_real_np, trajectory_model, trajectory_GAMD, directory, epoch, femto, color_1):
 
     trajectory_model_np = np.concatenate(trajectory_model, axis = 0)
     trajectory_GAMD_np = np.stack(trajectory_GAMD, axis = 0)
@@ -79,19 +83,21 @@ def rdf_graph_one_snapshot(trajectory_real_np, trajectory_model, trajectory_GAMD
 
     g_r_model_average = np.mean(g_r_model_all, axis=0)
 
-    plt.figure()
-    plt.plot(radii_real, g_r_real_average, label='MD Simulation Data', color='cornflowerblue')
-    plt.plot(radii_model, g_r_model_average, label='Model Data', color='darkorange')
-    plt.xlabel('r')
-    plt.ylabel('RDF(r)')
-    plt.legend()
+    if (femto == 40): ##change to femto==4 for non-augmented models
+        plt.figure(figsize=(8,4.8))
+        plt.plot(radii_real, g_r_real_average, label='ground truth', color='black', linewidth=4)
+
+    plt.plot(radii_model, g_r_model_average, label=f'timeshift {femto}fs', color=color_1)
+    plt.xlabel('r/Å')
+    plt.ylabel('g(r)')
+    plt.subplots_adjust(right=0.8)
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize='small')
     plt.xlim(0, 14)
-    plt.ylim(0, 0.05)
-    plt.savefig(f"{directory}/rdfgraph_noGAMD_(femto={femto}, epoch={epoch}).png")
-    plt.close()
+    plt.tight_layout()
 
+    """ ##with GAMD
     g_r_GAMD_all = []
-
+    
     trajectory_GAMD_np = np.mod(trajectory_GAMD_np,BOX_SIZE)
 
     for i in range (trajectory_GAMD_np.shape[0]):
@@ -100,54 +106,18 @@ def rdf_graph_one_snapshot(trajectory_real_np, trajectory_model, trajectory_GAMD
         g_r_GAMD_all.append(g_r_GAMD)
 
     g_r_GAMD_average = np.mean(g_r_GAMD_all, axis=0)
-
+    
     plt.figure()
     plt.plot(radii_real, g_r_real_average, label='MD Simulation Data', color='cornflowerblue')
-    plt.plot(radii_model, g_r_model_average, label='Model Data', color='darkorange')
-    plt.plot(radii_GAMD, g_r_GAMD_average, label='GAMD Data', color='forestgreen')
-    plt.xlabel('r')
+    plt.plot(radii_model, g_r_model_average, label=f'Model Data timeshift={femto}', color='darkorange')
+    #plt.plot(radii_GAMD, g_r_GAMD_average, label='GAMD Data', color='forestgreen')
+    plt.xlabel('r/A')
     plt.ylabel('RDF(r)')
     plt.legend()
     plt.xlim(0, 14)
     plt.savefig(f"{directory}/rdfgraph_withGAMD_(femto={femto}, epoch={epoch}).png")
     plt.close()
-
-    max_model, min_model = find_the_numbers(radii_model, g_r_model_average)
-    max_real, min_real = find_the_numbers(radii_real, g_r_real_average)
-    max_GAMD, min_GAMD = find_the_numbers(radii_GAMD, g_r_GAMD_average)
-
-    relative_error_max_model_real = get_absolute_relative_error(max_model, max_real)
-    relative_error_min_model_real = get_absolute_relative_error(min_model, min_real)
-    relative_error_max_GAMD_real = get_absolute_relative_error(max_GAMD, max_real)
-    relative_error_min_GAMD_real = get_absolute_relative_error(min_GAMD, min_real)
-    relative_error_max_model_GAMD = get_absolute_relative_error(max_model, max_GAMD)
-    relative_error_min_model_GAMD = get_absolute_relative_error(min_model, min_GAMD)
-
-    dist_diff_model_real = calculate_distribution_difference(radii_real, g_r_model_average, g_r_real_average)
-    dist_diff_GAMD_real = calculate_distribution_difference(radii_real, g_r_GAMD_average, g_r_real_average)
-    dist_diff_model_GAMD = calculate_distribution_difference(radii_real, g_r_model_average, g_r_GAMD_average)
-
-    file_path = os.path.join(directory, f"metrics_traj_femto={femto}" + '.txt')
-
-    with open(file_path, 'w') as file:
-        file.write(f"Max_model:{max_model}\n")
-        file.write(f"Min_model:{min_model}\n")
-        file.write(f"Max_real:{max_real}\n")
-        file.write(f"Min_real:{min_real}\n")
-        file.write(f"Max_GAMD:{max_GAMD}\n")
-        file.write(f"Min_GAMD:{min_GAMD}\n")
-
-        file.write(f"relative_error_max_model_real:{relative_error_max_model_real}\n")
-        file.write(f"relative_error_min_model_real:{relative_error_min_model_real}\n")
-        file.write(f"relative_error_max_GAMD_real:{relative_error_max_GAMD_real}\n")
-        file.write(f"relative_error_min_GAMD_real:{relative_error_min_GAMD_real}\n")
-        file.write(f"relative_error_max_model_GAMD:{relative_error_max_model_GAMD}\n")
-        file.write(f"relative_error_min_model_GAMD:{relative_error_min_model_GAMD}\n")
-
-        file.write(f"dist_diff_model_real:{dist_diff_model_real}\n")
-        file.write(f"dist_diff_GAMD_real:{dist_diff_GAMD_real}\n")
-        file.write(f"dist_diff_model_GAMD:{dist_diff_model_GAMD}\n")
-        
+    """
 
 def find_the_numbers(radii, g_r):
     index_of_max = np.argmax(g_r)
@@ -203,23 +173,25 @@ def get_temp_from_vel(vel):
     coeff = 6.207563e-6 ##this is calculated
     return all_squared * coeff
 
-def nice_temp_graphs(directory, femto, temp_real, temp_model_not_concat, temp_GAMD_not_concat):
+def nice_temp_graphs(directory, femto, temp_real, temp_model_not_concat, temp_GAMD_not_concat, color_1):
 
     temp_model = np.concatenate(temp_model_not_concat)
     temp_GAMD = np.array(temp_GAMD_not_concat)
 
-    indices = np.arange(len(temp_real))*20
+    indices = np.arange(len(temp_real))*40
     
-    plt.figure()  # Start a new figure
-    plt.plot(indices, temp_real, label='MD Simulation Data', color='cornflowerblue')  # MD Simulation Data in blue
-    plt.plot(indices, temp_model, label='Model Data', color='darkorange')  # Model Data in red
-    plt.xlabel('time')
-    plt.ylabel('temperature')
+    if (femto==40): ##change to femto==4 for non-augmented models
+        plt.figure(figsize=(8,4.8))  # Start a new figure
+        plt.plot(indices, temp_real, label='ground truth', color='black', alpha=0.2)  # MD Simulation Data in blue
+    plt.plot(indices, temp_model, label=f'timeshift {femto}fs', color=color_1)  # Model Data in red
+    plt.xlabel('time / fs')
+    plt.ylabel('temp / K')
     plt.ylim(0, 120)
-    plt.legend()
-    plt.savefig(f"{directory}/temp_graph_noGAMD_(femto={femto}).png")  # Save figure without GAMD data
-    plt.close()  # Close the figure
-    
+    plt.subplots_adjust(right=0.8)
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize='small')
+    plt.tight_layout()
+
+    """ ##with GAMD
     # Second figure: With GAMD data
     plt.figure()  # Start a new figure
     plt.plot(indices, temp_real, label='MD Simulation Data', color='cornflowerblue')  # MD Simulation Data in blue
@@ -230,33 +202,30 @@ def nice_temp_graphs(directory, femto, temp_real, temp_model_not_concat, temp_GA
     plt.legend()
     plt.savefig(f"{directory}/temp_graph_withGAMD_(femto={femto}).png")  # Save figure with GAMD data
     plt.close()  # Close the figure
+    """
     
 
-def do_it_all(directory, epoch, femto, pos_real, pos_GAMD, pos_model, temp_real, temp_GAMD, temp_model):
-     rdf_graph_one_snapshot(pos_real, pos_model, pos_GAMD, directory, epoch, femto)
-     nice_temp_graphs(directory, femto, temp_real, temp_model, temp_GAMD)
-     output_file = os.path.join(directory, f'trajectory_GAMD_{femto}.xyz')
-     pos_model = np.concatenate(pos_model, axis = 0)
-     save_xyz_from_numpy(pos_model, output_file)
-     pos_GAMD = np.stack(pos_GAMD, axis = 0)
-     pos_GAMD = np.stack(pos_GAMD, axis = 0)
-     save_xyz_from_numpy(pos_GAMD, output_file)
+def do_it_all_rdf(directory, epoch, femto, pos_real, pos_GAMD, pos_model, temp_real, temp_GAMD, temp_model, color):
+     rdf_graph_one_snapshot(pos_real, pos_model, pos_GAMD, directory, epoch, femto, color)
 
+def do_it_all_temp(directory, epoch, femto, pos_real, pos_GAMD, pos_model, temp_real, temp_GAMD, temp_model, color):
+     nice_temp_graphs(directory, femto, temp_real, temp_model, temp_GAMD, color)
 
 def test_main(args):
     t_size = 1
     t_howmany = 20
     cp_name = args.cp_name
     epoch = args.epoch
+    architecture = args.architecture
 
-    directory = os.path.join('RESULTS_TEST_RESULTS_best_notmyGAMD_xyz',f'results_{cp_name}_epoch={epoch}')
+    directory = os.path.join('RESULTS_BERLINyeyyy',f'results_{cp_name}_epoch={epoch}')
     os.makedirs(directory, exist_ok=True)
 
     trajectory_real = []
     vel_real = []
     temp_real = []
 
-    full_sequence = [0,0.1,0.2,0.5] + list(range(1,21))
+    full_sequence = [0.1,0.2,0.5] + list(range(1,21))
 
     trajectory_model_01 = []
     trajectory_model_02 = []
@@ -345,7 +314,11 @@ def test_main(args):
     print("GAMD data imported")
     
     ## model data
-    full_sequence = [0.1,0.2,0.5, 1, 2, 3, 4, 5, 10, 15, 20]
+
+    plt.rcParams.update({'font.size': 12})
+    
+    #full_sequence = [0.1,0.2,0.5, 1, 2, 3, 4, 5, 10, 15, 20] ## for not-augmented models
+    full_sequence = [1, 2, 3, 4, 5, 10, 15, 20] ## for augmented models
     if (cp_name != 'GAMD_SONODE_20ts_for1_GAMDyes_freezeyes_PBCloss'):
         dir_to_get_model_from_first = os.path.join('Henna_best_trajectories_and_temps',f'results_{cp_name}_epoch={epoch}_first')
         dir_to_get_model_from_second = os.path.join('Henna_best_trajectories_and_temps',f'results_{cp_name}_epoch={epoch}_second')
@@ -415,19 +388,33 @@ def test_main(args):
                 locals()[f'temp_model_{int(j*10):02}'] = np.concatenate(locals()[f'temp_model_{int(j*10):02}'], axis=0)
 
     print("Model data imported")
-    
 
-    for j in full_sequence:
-        femto = j*20
-        if (j>=1): do_it_all(directory, epoch, femto, trajectory_real, locals()[f'trajectory_GAMD_{j}'], locals()[f'trajectory_model_{j}'], temp_real, locals()[f'temp_GAMD_{j}'], locals()[f'temp_model_{j}'])
-        if (j<1): do_it_all(directory, epoch, femto, trajectory_real, locals()[f'trajectory_GAMD_{int(j*10):02}'], locals()[f'trajectory_model_{int(j*10):02}'], temp_real, locals()[f'temp_GAMD_{int(j*10):02}'], locals()[f'temp_model_{int(j*10):02}'])
-        print(f"{femto}fs done :)")
+    colormap = plt.cm.get_cmap('viridis', len(full_sequence))
+    
+    for i, j in enumerate(full_sequence):
+        femto = j*40
+        if (j>=1): do_it_all_rdf(directory, epoch, int(femto), trajectory_real, locals()[f'trajectory_GAMD_{j}'], locals()[f'trajectory_model_{j}'], temp_real, locals()[f'temp_GAMD_{j}'], locals()[f'temp_model_{j}'], colormap(i))
+        if (j<1): do_it_all_rdf(directory, epoch, int(femto), trajectory_real, locals()[f'trajectory_GAMD_{int(j*10):02}'], locals()[f'trajectory_model_{int(j*10):02}'], temp_real, locals()[f'temp_GAMD_{int(j*10):02}'], locals()[f'temp_model_{int(j*10):02}'], colormap(i))
+        print(f"{femto}fs done :) rdf")
+
+    plt.savefig(f"{directory}/rdfgraph_noGAMD.png", dpi=600)
+    plt.close()
+
+    for i, j in enumerate(full_sequence):
+        femto = j*40
+        if (j>=1): do_it_all_temp(directory, epoch, int(femto), trajectory_real, locals()[f'trajectory_GAMD_{j}'], locals()[f'trajectory_model_{j}'], temp_real, locals()[f'temp_GAMD_{j}'], locals()[f'temp_model_{j}'], colormap(i))
+        if (j<1): do_it_all_temp(directory, epoch, int(femto), trajectory_real, locals()[f'trajectory_GAMD_{int(j*10):02}'], locals()[f'trajectory_model_{int(j*10):02}'], temp_real, locals()[f'temp_GAMD_{int(j*10):02}'], locals()[f'temp_model_{int(j*10):02}'], colormap(i))
+        print(f"{femto}fs done :) temp")
+
+    plt.savefig(f"{directory}/temp_graph_noGAMD.png", dpi=600)  # Save figure without GAMD data
+    plt.close()  # Close the figure
         
 
 def main():
     parser = argparse.ArgumentParser()  
     parser.add_argument('--cp_name', default='GAMD_SONODE_20ts_for20_GAMDyes_freezeyes_PBCloss_AUG')
     parser.add_argument('--epoch', default=7, type=int)
+    parser.add_argument('--architecture', default='gnode', type=str)
     args = parser.parse_args()
     test_main(args)
 
