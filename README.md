@@ -2,7 +2,7 @@
 
 This is the github repo for the code used in the Master thesis "Modeling temporal processes of molecular dynamics". It is the code for the Assisted GDE and Simple GDE networks for molecular dynamics. Specific versions can be accessed by changing augmentation, pretraining and architecture variables.
 
-The networks aim to predict moelcular system configurations further into time. They are able to predict corect atomic distributions for up to 400fs, proved by the RDF graphs. They were trained and tested on the Lennard-Jones fluid.
+The networks aim to predict moelcular system configurations further into time. They are able to predict corect atomic distributions for up to 800fs, proved by the RDF graphs. They were trained and tested on the Lennard-Jones fluid.
 
 ## Prerequisites
 
