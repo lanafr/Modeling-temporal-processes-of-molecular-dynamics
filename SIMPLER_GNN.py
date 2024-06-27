@@ -136,9 +136,11 @@ class Full_predictor(nn.Module):
 
             GNN.load_state_dict(adjusted_state_dict, strict=False)
 
+            """
             # Freeze the weights of the pretrained part (force_predictor)
             for param in GNN.parameters():
                 param.requires_grad = False
+            """
         
         self.integrationscheme = SONODE(GNN, augmentation)
 
