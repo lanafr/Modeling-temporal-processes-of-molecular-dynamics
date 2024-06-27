@@ -449,9 +449,9 @@ def main():
     parser.add_argument('--data_dir', default='./md_dataset')
     parser.add_argument('--loss', default='mae')
     parser.add_argument('--num_gpu', default=-1, type=int)
-    parser.add_argument('--architecture', default='assisted', type=str)
-    parser.add_argument('--augmentation', default = False, type=bool)
-    parser.add_argument('--pretrained', default= True, type=bool)
+    parser.add_argument('--architecture', default='assisted', type=str) ## 'assisted' or 'simple'
+    parser.add_argument('--augmentation', default = False, type=bool) ## 'true' or 'false'
+    parser.add_argument('--pretrained', default= True, type=bool) ## 'true' or 'false'
 
     args = parser.parse_args()
     train_model(args)
