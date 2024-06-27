@@ -249,7 +249,7 @@ def test_main(args):
     cp_name = args.cp_name
     epoch = args.epoch
 
-    directory = os.path.join('RESULTS_TEST_RESULTS_best_notmyGAMD_xyz',f'results_{cp_name}_epoch={epoch}')
+    directory = os.path.join('RESULTS',f'results_{cp_name}_epoch={epoch}')
     os.makedirs(directory, exist_ok=True)
 
     trajectory_real = []
@@ -427,7 +427,7 @@ def test_main(args):
 def main():
     parser = argparse.ArgumentParser()  
     parser.add_argument('--cp_name', default='GAMD_SONODE_20ts_for20_GAMDyes_freezeyes_PBCloss_AUG')
-    parser.add_argument('--epoch', default=7, type=int)
+    parser.add_argument('--epoch', type=int)
     args = parser.parse_args()
     test_main(args)
 
